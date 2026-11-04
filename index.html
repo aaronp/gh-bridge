@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GitHub Bridge Example</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <h1>GitHub bridge example</h1>
+
+    <section>
+      <h2>Config</h2>
+      <label for="asUrl">Auth server URL</label><input id="asUrl" />
+      <label for="bridgeUrl">Bridge URL</label><input id="bridgeUrl" />
+      <label for="entries">Sign-in entries (JSON RequestEntry[])</label><textarea id="entries"></textarea>
+    </section>
+
+    <section>
+      <h2>Sign in</h2>
+      <button type="button" id="signIn">Sign in with kerits</button>
+      <button type="button" id="signOut">Sign out</button>
+      <pre id="authOut"></pre>
+    </section>
+
+    <section>
+      <h2>Token</h2>
+      <pre id="tokenOut">Not signed in.</pre>
+    </section>
+
+    <section>
+      <h2>Read</h2>
+      <label for="readPath">Path (empty = token root)</label><input id="readPath" />
+      <button type="button" id="read" class="needsToken">Read</button>
+      <div id="entriesOut"></div>
+      <pre id="readOut"></pre>
+    </section>
+
+    <section>
+      <h2>Write</h2>
+      <label for="writePath">Path</label><input id="writePath" />
+      <label for="writeContent">Content</label><textarea id="writeContent"></textarea>
+      <label for="writeSha">sha (empty = create; filled from the last read of this path)</label><input id="writeSha" />
+      <button type="button" id="write" class="needsToken">Write</button>
+      <button type="button" id="reread" hidden>Re-read</button>
+      <pre id="writeOut"></pre>
+    </section>
+
+    <section>
+      <h2>Rules (.kerits)</h2>
+      <button type="button" id="readRules" class="needsToken">Read .kerits</button>
+      <p id="rulesNote" class="warn" hidden></p>
+      <p><a id="rulesLink" target="_blank" rel="noopener" hidden>Edit .kerits on GitHub</a></p>
+      <pre id="rulesOut"></pre>
+    </section>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
