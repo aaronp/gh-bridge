@@ -46,7 +46,6 @@ Every call returns `Result<T>` = `{ ok: true, value }` or `BridgeError` = `{ ok:
 | 403 | `forbidden` | `invalid_rules` | `.kerits` is not valid v1 rules: everything is denied. |
 | 403 | `forbidden` | `rules_file` | Writes to `.kerits` are never allowed through the bridge; edit it on GitHub. |
 | 403 | `forbidden` | `path_outside_root`, `invalid_path`, `invalid_root` | Path escapes or is not valid under the token's root. |
-| 403 | `forbidden` | `repo_not_allowed` | The bridge operator does not serve this repo. |
 | 404 | `not_found` | `not_found` | No such file (reported only when the rules allow the read). |
 | 409 | `conflict` | `stale` | `sha` is not the current version: re-read and retry. |
 | 409 | `conflict` | `exists` | Create (no `sha`) on a path that already exists. |
@@ -56,7 +55,7 @@ Every call returns `Result<T>` = `{ ok: true, value }` or `BridgeError` = `{ ok:
 | 503 | `unavailable` | `rules_unavailable` | The key store needed to resolve `username@policy` rules is unreachable (fails closed). |
 | other | `http` | status text, or `invalid_json` | Non-bridge response (proxy page, non-JSON body). |
 
-A misconfigured bridge (e.g. missing `ALLOWED_REPOS`) answers a plain-text 500 without CORS headers: from a browser that shows
+A misconfigured bridge (e.g. missing `KERI_STORE_URL`) answers a plain-text 500 without CORS headers: from a browser that shows
 as status 0 `network`, elsewhere as status 500 `http` `Internal Server Error`.
 
 Contract test, against the real bridge app: `bun test services/adapters-github/tests/client-contract.test.ts`.

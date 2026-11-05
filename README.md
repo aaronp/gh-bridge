@@ -22,15 +22,12 @@ of ours. Who may read and write what is decided by a `.kerits` file in the repo,
 ### 2. Install the GitHub App on the repo
 
 The bridge talks to GitHub as a GitHub App. Whoever runs the bridge creates it once (permissions **Contents: Read & write**,
-**Metadata: Read**, no webhooks). Install it on the repo under **Only select repositories**. If you run your own bridge, see its
-README (`services/adapters-github/README.md`, section 1) for creating the App and its key.
+**Metadata: Read**, no webhooks). Install it on the repo under **Only select repositories**. The bridge serves exactly the repos the App is
+installed on. If you run your own bridge, see its README (`services/adapters-github/README.md`, section 1) for creating the
+App and its key. The bridge's `KERI_STORE_URL` is where `username@policy` names in your rules are looked up
+(`https://data.kerits.id` in production).
 
-### 3. Ask the bridge operator to serve the repo
-
-The bridge only serves repos listed in its `ALLOWED_REPOS` (`owner/repo`). Its `KERI_STORE_URL` is where `username@policy`
-names in your rules are looked up (`https://data.kerits.id` in production).
-
-### 4. Publish two policies
+### 3. Publish two policies
 
 In the kerits web app's policy editor, publish:
 
@@ -40,7 +37,7 @@ In the kerits web app's policy editor, publish:
   in: `url` = the bridge URL, `owner`/`repo` = your repo (or `repo` = `owner/repo`), `path` = the root the token may reach (`/` for
   the whole repo). Note its SAID.
 
-### 5. Commit a `.kerits` file at the repo root
+### 4. Commit a `.kerits` file at the repo root
 
 Without it the bridge denies everything (`403 no_rules`). Still `no_rules` after committing it? The GitHub App is not installed
 on the repo (step 2): GitHub answers 404 for both. Example: members read `/shared/**`, and each user writes only their own
@@ -62,7 +59,7 @@ folder under `/users/<their AID>/`:
 - Rules cannot read other files. `.kerits` itself can never be written through the bridge: change it with a normal commit. To read
   it from this page, add a rule that allows it, e.g. `"/.kerits": { "read": ["<username>@member"] }`.
 
-### 6. Configure and run the page
+### 5. Configure and run the page
 
 No site registration is needed: the auth server uses the page's origin as its client id, and the redirect URI is the page itself
 (it must be HTTPS, or `http://localhost`).
@@ -74,9 +71,9 @@ make dev               # http://localhost:5175
 ```
 
 In the page's **Config**, set the bridge URL and replace `<MEMBER_POLICY_SAID>` and `<REPO_LOCATION_POLICY_SAID>` in the sign-in
-entries with the SAIDs from step 4 (the page refuses to sign in while a placeholder is left). Config is saved in your browser.
+entries with the SAIDs from step 3 (the page refuses to sign in while a placeholder is left). Config is saved in your browser.
 
-### 7. Try it
+### 6. Try it
 
 1. **Sign in.** Approve in the wallet, filling in the repo location. Back on the page, **Token** shows your AID, the site, your
    policies and the `owner/repo/path` the token is for.
