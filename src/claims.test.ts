@@ -20,7 +20,7 @@ describe("decodeToken", () => {
       kerits: { v: 2, policySAIDs: ["E1"], "data-source": { data: location } },
     })
     // call our method under test
-    const view = decodeToken(token)
+    const view = decodeToken(token, "https://b")
     // assertions: every panel field, and the alias found by its data.url
     expect(view).toEqual({
       sub: "EAID",
@@ -36,15 +36,46 @@ describe("decodeToken", () => {
     // setup: signed in without the repo location entry
     const token = jwt({ sub: "EAID", kerits: { v: 2, policySAIDs: [], member: { said: "E1" } } })
     // call our method under test
-    const view = decodeToken(token)
+    const view = decodeToken(token, "https://b")
     // assertions: decoded, but nothing to read or write against
+    expect(view?.location).toBeNull()
+  })
+
+  test("location without url is found", () => {
+    // setup: a token whose alias discloses repo and branch but no url
+    const data = { repo: "o/r", branch: "dev" }
+    const token = jwt({ sub: "EAID", kerits: { v: 2, policySAIDs: [], loc: { data } } })
+    // call our method under test
+    const view = decodeToken(token, "https://b")
+    // assertions: found, with only the disclosed fields
+    expect(view?.location).toEqual(data)
+  })
+
+  test("alias whose url is another origin is ignored", () => {
+    // setup: one alias for another bridge, one for ours
+    const token = jwt({
+      sub: "EAID",
+      kerits: { v: 2, policySAIDs: [], a: { data: { url: "https://other", repo: "x/y" } }, b: { data: { url: "https://b/", repo: "o/r" } } },
+    })
+    // call our method under test
+    const view = decodeToken(token, "https://b")
+    // assertions: only ours is read
+    expect(view?.location).toEqual({ url: "https://b/", repo: "o/r" })
+  })
+
+  test("no location → null", () => {
+    // setup: aliases without any location key
+    const token = jwt({ sub: "EAID", kerits: { v: 2, policySAIDs: [], m: { data: { team: "core" } } } })
+    // call our method under test
+    const view = decodeToken(token, "https://b")
+    // assertions: nothing to default from
     expect(view?.location).toBeNull()
   })
 
   test("a non-JWT is null", () => {
     // setup: garbage in sessionStorage
     // call our method under test
-    const view = decodeToken("not-a-jwt")
+    const view = decodeToken("not-a-jwt", "https://b")
     // assertions: no view, no throw
     expect(view).toBeNull()
   })
@@ -53,8 +84,8 @@ describe("decodeToken", () => {
 describe("isExpired", () => {
   test("compares exp to now in seconds, never expired without exp", () => {
     // setup: a token expiring at 100 and one without exp
-    const view = decodeToken(jwt({ sub: "s", exp: 100 }))
-    const noExp = decodeToken(jwt({ sub: "s" }))
+    const view = decodeToken(jwt({ sub: "s", exp: 100 }), "https://b")
+    const noExp = decodeToken(jwt({ sub: "s" }), "https://b")
     if (!view || !noExp) throw new Error("decode failed")
     // call our method under test
     const results = [isExpired(view, 101), isExpired(view, 99), isExpired(noExp, 1e12)]

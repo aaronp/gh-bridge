@@ -108,4 +108,13 @@ describe("unfilledPlaceholders", () => {
     expect(left).toEqual(["<MEMBER_POLICY_SAID>", "<REPO_LOCATION_POLICY_SAID>"])
     expect(none).toEqual([])
   })
+
+  test("lists the <BRIDGE_URL> audience placeholder", () => {
+    // setup: default member entry with VITE_BRIDGE_URL unset
+    const entries = '[{"policy":"EAbc","audience":"<BRIDGE_URL>"}]'
+    // call our method under test
+    const left = unfilledPlaceholders(entries)
+    // assertions: sign-in is refused while the audience is a placeholder
+    expect(left).toEqual(["<BRIDGE_URL>"])
+  })
 })

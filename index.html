@@ -29,6 +29,15 @@
     </section>
 
     <section>
+      <h2>Target</h2>
+      <p>Filled from the token on sign-in; change any of them to test your <code>.kerits</code> rules. Empty = the token's value.</p>
+      <label for="owner">Owner</label><input id="owner" />
+      <label for="repo">Repo (name, or owner/repo)</label><input id="repo" />
+      <label for="branch">Branch (empty = the token's, else the default branch)</label><input id="branch" />
+      <p id="rootNote"></p>
+    </section>
+
+    <section>
       <h2>Read</h2>
       <label for="readPath">Path (empty = token root)</label><input id="readPath" />
       <button type="button" id="read" class="needsToken">Read</button>

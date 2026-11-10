@@ -49,8 +49,18 @@ export function createGhBridgeClient(opts: {
   }
 
   return {
-    read: (path?: string) => call<FileRead | DirRead>('GET', path ? `?path=${encodeURIComponent(path)}` : ''),
-    write: (path: string, content: string, o: { sha?: string; encoding?: 'utf-8' | 'base64' } = {}) =>
-      call<WriteResult>('PUT', '', { path, content, ...o }),
+    read: (path?: string, o: { repo?: string; branch?: string } = {}) => {
+      const q = new URLSearchParams();
+      if (path) q.set('path', path);
+      if (o.repo) q.set('repo', o.repo);
+      if (o.branch) q.set('branch', o.branch);
+      const qs = q.toString();
+      return call<FileRead | DirRead>('GET', qs ? `?${qs}` : '');
+    },
+    write: (
+      path: string,
+      content: string,
+      o: { sha?: string; encoding?: 'utf-8' | 'base64'; repo?: string; branch?: string } = {},
+    ) => call<WriteResult>('PUT', '', { path, content, ...o }),
   };
 }

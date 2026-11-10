@@ -1,6 +1,6 @@
 import { createGhBridgeClient, type DirRead, type FileRead, type Result } from '@kerits/gh-bridge-client';
 import { decodeToken, isExpired, type TokenView } from './claims';
-import { keritsLink, repoOf } from './links';
+import { joinRepo, keritsLink, prefillFrom, repoOf, rulesTarget } from './links';
 import { authorizeUrl, checkState, exchangeCode, type OAuthConfig, parseCallback, unfilledPlaceholders } from './oauth';
 import { challengeFor, randomVerifier } from './pkce';
 
@@ -8,15 +8,15 @@ const CONFIG_KEY = 'gh-bridge-example:config';
 const PKCE_KEY = 'gh-bridge-example:pkce';
 const TOKEN_KEY = 'gh-bridge-example:token';
 
+// the app chooses the repo (Config), so one member entry is enough; `audience` names the bridge
 const DEFAULT_ENTRIES = JSON.stringify(
   [
-    { policy: '<MEMBER_POLICY_SAID>', as: 'member', need: 'required', purpose: 'read the repo' },
     {
-      policy: '<REPO_LOCATION_POLICY_SAID>',
-      as: 'data',
+      policy: '<MEMBER_POLICY_SAID>',
+      as: 'member',
       need: 'required',
-      purpose: 'bridge location',
-      audienceFrom: 'data.url',
+      purpose: 'read the repo',
+      audience: import.meta.env.VITE_BRIDGE_URL || '<BRIDGE_URL>',
     },
   ],
   null,
@@ -46,13 +46,16 @@ const store = {
 };
 
 // --- config ---
-const fields = ['asUrl', 'bridgeUrl', 'entries'] as const;
+const fields = ['asUrl', 'bridgeUrl', 'owner', 'repo', 'branch', 'entries'] as const;
 type Fields = Record<(typeof fields)[number], string>;
 
 function loadConfig(): Fields {
   const defaults: Fields = {
     asUrl: import.meta.env.VITE_AS_URL ?? '',
     bridgeUrl: import.meta.env.VITE_BRIDGE_URL ?? '',
+    owner: '',
+    repo: import.meta.env.VITE_REPO ?? '',
+    branch: import.meta.env.VITE_BRANCH ?? '',
     entries: import.meta.env.VITE_ENTRIES || DEFAULT_ENTRIES,
   };
   try {
@@ -71,28 +74,34 @@ const config = (): OAuthConfig => ({
 });
 
 for (const [k, v] of Object.entries(loadConfig())) input(k).value = v;
-for (const k of fields) {
-  input(k).addEventListener('change', () => {
-    const saved = Object.fromEntries(fields.map((f) => [f, input(f).value]));
-    store.set(localStorage, CONFIG_KEY, JSON.stringify(saved));
-  });
-}
+const saveConfig = () =>
+  store.set(localStorage, CONFIG_KEY, JSON.stringify(Object.fromEntries(fields.map((f) => [f, input(f).value]))));
+for (const k of fields) input(k).addEventListener('change', saveConfig);
 
 // --- token ---
 let token = store.get(sessionStorage, TOKEN_KEY);
 let view: TokenView | null = null;
 
 function renderToken() {
-  view = token ? decodeToken(token) : null;
-  const usable = view?.location != null;
+  view = token ? decodeToken(token, config().bridgeUrl) : null;
+  const usable = view !== null;
   for (const b of document.querySelectorAll<HTMLButtonElement>('.needsToken')) b.disabled = !usable;
   if (!token) return show('tokenOut', 'Not signed in.');
   if (!view) return show('tokenOut', 'Stored token is not a JWT; sign in again.');
   const status = isExpired(view, Date.now() / 1000) ? 'EXPIRED (the bridge will answer 401)' : 'valid until exp';
-  const note = view.location ? '' : '\n\nNo bridge location in token: sign in with the repo-location entry.';
-  show('tokenOut', `${JSON.stringify(view, null, 2)}\n\n${status}${note}`);
+  show('tokenOut', `${JSON.stringify(view, null, 2)}\n\n${status}`);
+  const root = view.location?.path;
+  $('rootNote').textContent = root
+    ? `The token limits you to "${root}": read/write paths below are relative to it.`
+    : 'The token sets no path: read/write paths below are from the repo root.';
   renderRulesLink(null);
 }
+
+// owner/repo/branch go on every call; empty means the token supplies them
+const target = () => ({
+  repo: joinRepo(input('owner').value, input('repo').value),
+  branch: input('branch').value.trim() || undefined,
+});
 
 const client = () => createGhBridgeClient({ url: config().bridgeUrl, getToken: () => token ?? '' });
 
@@ -135,6 +144,9 @@ async function handleCallback() {
   store.set(sessionStorage, TOKEN_KEY, token);
   show('authOut', 'Signed in.');
   renderToken();
+  // the token's disclosed owner/repo/branch become the starting target; the user can change them
+  for (const [k, v] of Object.entries(prefillFrom(view?.location ?? null))) input(k).value = v;
+  saveConfig();
 }
 
 // --- read ---
@@ -157,7 +169,7 @@ function renderRead(path: string, result: Result<FileRead | DirRead>) {
 
 async function doRead(path: string) {
   input('readPath').value = path;
-  renderRead(path, await client().read(path || undefined));
+  renderRead(path, await client().read(path || undefined, target()));
 }
 
 $('read').addEventListener('click', () => doRead(input('readPath').value.trim()));
@@ -170,7 +182,7 @@ input('writePath').addEventListener('change', () => {
 $('write').addEventListener('click', async () => {
   const path = input('writePath').value.trim();
   const sha = input('writeSha').value.trim();
-  const result = await client().write(path, input('writeContent').value, sha ? { sha } : {});
+  const result = await client().write(path, input('writeContent').value, { ...target(), ...(sha ? { sha } : {}) });
   if (result.ok) {
     lastSha.set(path, result.value.sha);
     input('writeSha').value = result.value.sha;
@@ -181,7 +193,7 @@ $('write').addEventListener('click', async () => {
 
 $('reread').addEventListener('click', async () => {
   const path = input('writePath').value.trim();
-  const result = await client().read(path);
+  const result = await client().read(path, target());
   if (result.ok && result.value.type === 'file') input('writeSha').value = result.value.sha;
   $('reread').hidden = true;
   show('writeOut', result);
@@ -190,7 +202,8 @@ $('reread').addEventListener('click', async () => {
 // --- rules ---
 function renderRulesLink(exists: boolean | null) {
   const loc = view?.location;
-  const repo = loc ? repoOf(loc) : null;
+  // the token's repo wins only when the Config repo is empty, as on the bridge (request ?? token)
+  const repo = target().repo ?? (loc ? repoOf(loc) : null);
   const link = $<HTMLAnchorElement>('rulesLink');
   link.hidden = !repo;
   if (repo) {
@@ -199,14 +212,14 @@ function renderRulesLink(exists: boolean | null) {
     link.textContent = exists === false ? 'Create .kerits on GitHub' : 'Edit .kerits on GitHub';
   }
   // reads are relative to the token root, so .kerits is only reachable from a repo-root token
-  const atRoot = !loc || loc.path.replace(/^\/+|\/+$/g, '') === '';
+  const atRoot = !loc?.path || loc.path.replace(/^\/+|\/+$/g, '') === '';
   $('readRules').hidden = !atRoot;
   $('rulesNote').hidden = atRoot;
   $('rulesNote').textContent = atRoot ? '' : 'Token root is not the repo root; open .kerits on GitHub.';
 }
 
 $('readRules').addEventListener('click', async () => {
-  const result = await client().read('.kerits');
+  const result = await client().read('.kerits', rulesTarget(target()));
   renderRulesLink(result.ok ? true : result.reason === 'no_rules' ? false : null);
   // GitHub answers 404 both for a missing .kerits and for a repo the App is not installed on
   const hint =

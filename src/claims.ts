@@ -1,4 +1,4 @@
-export type BridgeLocation = { url: string; owner?: string; repo: string; path: string };
+export type BridgeLocation = { url?: string; owner?: string; repo?: string; branch?: string; path?: string };
 
 export type TokenView = {
   sub: string;
@@ -26,25 +26,30 @@ function payloadOf(jwt: string): Record<string, unknown> | null {
   }
 }
 
-/** The bridge alias is whichever `kerits` entry discloses `data.url`. */
-function locationOf(kerits: unknown): BridgeLocation | null {
+const LOCATION_KEYS = ['url', 'owner', 'repo', 'branch', 'path'] as const;
+
+function sameOrigin(a: string, b: string): boolean {
+  try {
+    return new URL(a).origin === new URL(b).origin;
+  } catch {
+    return false;
+  }
+}
+
+/** Similar to the bridge's rule (display only, first match wins): the first alias disclosing any location key, unless its `url` is not a string or names another origin. */
+function locationOf(kerits: unknown, bridgeUrl: string): BridgeLocation | null {
   if (!isObject(kerits)) return null;
   for (const v of Object.values(kerits)) {
     const d = isObject(v) ? v.data : undefined;
-    if (isObject(d) && typeof d.url === 'string' && typeof d.repo === 'string') {
-      return {
-        url: d.url,
-        ...(typeof d.owner === 'string' ? { owner: d.owner } : {}),
-        repo: d.repo,
-        path: typeof d.path === 'string' ? d.path : '',
-      };
-    }
+    if (!isObject(d) || !LOCATION_KEYS.some((k) => k in d)) continue;
+    if ('url' in d && !(typeof d.url === 'string' && sameOrigin(d.url, bridgeUrl))) continue;
+    return Object.fromEntries(LOCATION_KEYS.flatMap((k) => (typeof d[k] === 'string' ? [[k, d[k]]] : [])));
   }
   return null;
 }
 
 /** Display only: the bridge verifies the token, the page never does. */
-export function decodeToken(jwt: string): TokenView | null {
+export function decodeToken(jwt: string, bridgeUrl: string): TokenView | null {
   const p = payloadOf(jwt);
   if (!p) return null;
   const kerits = isObject(p.kerits) ? p.kerits : {};
@@ -57,7 +62,7 @@ export function decodeToken(jwt: string): TokenView | null {
     policySAIDs: Array.isArray(kerits.policySAIDs)
       ? kerits.policySAIDs.filter((s): s is string => typeof s === 'string')
       : [],
-    location: locationOf(kerits),
+    location: locationOf(kerits, bridgeUrl),
   };
 }
 

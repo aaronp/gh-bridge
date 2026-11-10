@@ -33,8 +33,8 @@ export function parseCallback(search: string): Callback {
   return code && state ? { kind: 'code', code, state } : { kind: 'none' };
 }
 
-/** `<..._SAID>` placeholders left in the entries: the AS would answer with a JSON error page and never redirect back. */
-export const unfilledPlaceholders = (entries: string): string[] => entries.match(/<[A-Z_]+_SAID>/g) ?? [];
+/** `<..._SAID>` / `<BRIDGE_URL>` placeholders left in the entries: the AS would answer with a JSON error page and never redirect back. */
+export const unfilledPlaceholders = (entries: string): string[] => entries.match(/<[A-Z_]+>/g) ?? [];
 
 export const checkState = (returned: string, stored: string | null): boolean => stored !== null && returned === stored;
 

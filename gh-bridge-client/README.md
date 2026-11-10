@@ -29,8 +29,10 @@ if (r.ok && r.value.type === "file") {
 
 | Call | Success `value` |
 |---|---|
-| `read(path?)` | `{ type: "file", path, sha, content, encoding: "utf-8" \| "base64" }` or `{ type: "dir", path, entries: [{ name, path, type, sha }] }` |
-| `write(path, content, { sha?, encoding? })` | `{ path, sha, commit }`. Without `sha` it creates; with it, it updates that exact version. |
+| `read(path?, { repo?, branch? })` | `{ type: "file", path, sha, content, encoding: "utf-8" \| "base64" }` or `{ type: "dir", path, entries: [{ name, path, type, sha }] }` |
+| `write(path, content, { sha?, encoding?, repo?, branch? })` | `{ path, sha, commit }`. Without `sha` it creates; with it, it updates that exact version. |
+
+**Where repo, branch and path come from.** Each field falls back on its own: `repo` (`owner/repo`) and `branch` are the call's value, else the one disclosed in the token, else (branch only) the repo's default branch; with no repo anywhere the call fails `missing_repo`. The token's `path`, if any, is a root: the call's `path` is relative to it, even when the call names another repo. Empty strings count as absent. `.kerits` rules are always read from the default branch.
 
 Every call returns `Result<T>` = `{ ok: true, value }` or `BridgeError` = `{ ok: false, status, error, reason }`.
 
@@ -40,7 +42,8 @@ Every call returns `Result<T>` = `{ ok: true, value }` or `BridgeError` = `{ ok:
 |---|---|---|---|
 | 0 | `network` | the fetch error message | Request never reached the bridge (offline, DNS, CORS, `getToken` threw). |
 | 400 | `bad_request` | `invalid_body` | Write body rejected. |
-| 401 | `unauthorized` | `missing_token`, or a token reason (`missing_sub`, `missing_data`, `ambiguous_data`, `invalid_repo`, `unsupported_kerits_version`, expiry / signature failures) | Token missing or not valid for this bridge. |
+| 400 | `bad_request` | `missing_repo` \| `invalid_repo` \| `invalid_branch` | No repo from the call or token; `repo` is not `owner/repo`; `branch` contains control characters or `..`. |
+| 401 | `unauthorized` | `missing_token`, or a token reason (`missing_sub`, `ambiguous_data`, `invalid_data`, `invalid_repo`, `unsupported_kerits_version`, expiry / signature failures) | Token missing or not valid for this bridge. |
 | 403 | `forbidden` | `denied` | The repo's `.kerits` rules do not allow this read/write for this token. Also returned for a missing file the caller may not read, and for a symlink to another path. |
 | 403 | `forbidden` | `no_rules` | No `.kerits` at the repo root, **or the bridge's GitHub App is not installed on the repo** (GitHub answers 404 for both). Everything is denied. |
 | 403 | `forbidden` | `invalid_rules` | `.kerits` is not valid v1 rules: everything is denied. |
