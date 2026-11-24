@@ -1,4 +1,4 @@
-import { createGhBridgeClient, type DirRead, type FileRead, type Result } from '@kerits/gh-bridge-client';
+import { createGhBridgeClient, type DirRead, type FileRead, type Result } from '@kerits.id/gh-bridge-client';
 import { decodeToken, isExpired, type TokenView } from './claims';
 import { joinRepo, keritsLink, prefillFrom, repoOf, rulesTarget } from './links';
 import { authorizeUrl, checkState, exchangeCode, type OAuthConfig, parseCallback, unfilledPlaceholders } from './oauth';

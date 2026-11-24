@@ -1,6 +1,6 @@
 {
-  "name": "@kerits/gh-bridge-client",
-  "version": "0.5.34",
+  "name": "@kerits.id/gh-bridge-client",
+  "version": "0.5.41",
   "private": true,
   "type": "module",
   "exports": {

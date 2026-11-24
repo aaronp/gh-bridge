@@ -8,7 +8,7 @@ wallet → auth server (oauth.kerits.id) → this page (bridge token) → GitHub
 ```
 
 The page has no secrets and no GitHub credentials. It uses plain browser OAuth (authorization code + PKCE) and
-[`@kerits/gh-bridge-client`](./gh-bridge-client/README.md), vendored in `./gh-bridge-client` so `bun install` needs nothing else
+[`@kerits.id/gh-bridge-client`](./gh-bridge-client/README.md), vendored in `./gh-bridge-client` so `bun install` needs nothing else
 of ours. Who may read and write what is decided by a `.kerits` file in the repo, which only the repo owner can change.
 
 ## Setup

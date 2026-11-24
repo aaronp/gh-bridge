@@ -1,4 +1,4 @@
-# @kerits/gh-bridge-client
+# @kerits.id/gh-bridge-client
 
 Client for the kerits GitHub bridge. Plain `fetch`, no dependencies, never throws.
 
@@ -7,7 +7,7 @@ token names the repo (`owner/repo`) and a root path; the client reads and writes
 setup (GitHub App, `.kerits` rules, sign-in) is the example template: https://github.com/aaronp/gh-bridge
 
 ```ts
-import { createGhBridgeClient } from "@kerits/gh-bridge-client"
+import { createGhBridgeClient } from "@kerits.id/gh-bridge-client"
 
 const bridge = createGhBridgeClient({ url: "https://github-bridge.kerits.id", getToken: () => accessToken })
 
